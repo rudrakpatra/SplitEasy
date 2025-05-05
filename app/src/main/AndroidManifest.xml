@@ -15,20 +15,14 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.SplitEasy">
+            android:theme="@style/Theme.SplitEasy"
+            android:windowSoftInputMode="adjustNothing"
+            >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity android:name=".GroupsActivity"
-            android:exported="true"
-            android:theme="@style/Theme.SplitEasy">
-        </activity>
-        <activity android:name=".GroupActivity"
-            android:exported="true"
-            android:theme="@style/Theme.SplitEasy">
         </activity>
     </application>
 

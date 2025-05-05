@@ -8,15 +8,32 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 
+data class AuthState(
+    val user: FirebaseUser?=null,
+    val loading: Boolean=false,
+    val error: Exception?=null,
+)
+
 object AuthManager {
+
+
     private const val TAG = "AuthManager"
     private lateinit var credentialManager: CredentialManager
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private var firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    private val _state = MutableStateFlow(AuthState())
+    val state: StateFlow<AuthState> = _state.asStateFlow()
 
     fun init(context: Context) {
         credentialManager = CredentialManager.create(context)
+        if(firebaseAuth.currentUser != null) {
+            _state.value =_state.value.copy(user = firebaseAuth.currentUser)
+        }
     }
 
     suspend fun signIn(context: Context): FirebaseUser? {
@@ -29,7 +46,8 @@ object AuthManager {
             .addCredentialOption(googleIdOption)
             .build()
 
-        return try {
+        _state.value = _state.value.copy(loading = true)
+        try {
             val result = credentialManager.getCredential(context, request)
             /**
              * Checks if the credential received from the Credential Manager is of type CustomCredential
@@ -47,16 +65,19 @@ object AuthManager {
             if (idToken != null) {
                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
                 firebaseAuth.signInWithCredential(firebaseCredential).await()
-                firebaseAuth.currentUser
-            } else null
+                _state.value =_state.value.copy(user = firebaseAuth.currentUser)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "signIn failed: ${e.localizedMessage}")
-            null
+            _state.value =_state.value.copy(error = e)
         }
+        _state.value = _state.value.copy(loading = false)
+        return _state.value.user
     }
 
-    suspend fun signOut(context: Context) {
+    suspend fun signOut() {
         firebaseAuth.signOut()
+        _state.value = _state.value.copy(user = null, loading = false, error = null)
         try {
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
         } catch (e: Exception) {

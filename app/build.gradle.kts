@@ -43,7 +43,9 @@ android {
 }
 
 dependencies {
-
+    configurations.all {
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -62,12 +64,19 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth")
-    implementation("androidx.credentials:credentials:1.3.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
-    implementation("androidx.navigation:navigation-compose:2.8.9")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.28.0")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.core)
+    implementation(libs.ext.latex)
+    implementation(libs.ext.strikethrough)
+    implementation(libs.ext.tables)
+    implementation(libs.ext.tasklist)
+    implementation(libs.html)
+    implementation(libs.syntax.highlight)
 }
