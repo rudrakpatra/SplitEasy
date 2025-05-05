@@ -25,11 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.spliteasy.auth.AuthManager
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 
 
 @Composable
-fun LoginScreen(onSignInSuccess: () -> Unit) {
+fun LoginScreen(onSignInSuccess: (user:FirebaseUser) -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
@@ -37,7 +38,7 @@ fun LoginScreen(onSignInSuccess: () -> Unit) {
 
     LaunchedEffect(Unit) {
         AuthManager.init(context)
-        AuthManager.getCurrentUser()?.let { onSignInSuccess() }
+        AuthManager.getCurrentUser()?.let { onSignInSuccess(it) }
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -56,7 +57,7 @@ fun LoginScreen(onSignInSuccess: () -> Unit) {
                         coroutineScope.launch {
                             val user = AuthManager.signIn(context)
                             isLoading = false
-                            if (user != null) onSignInSuccess()
+                            if (user != null) onSignInSuccess(user)
                             else errorMessage = "Sign-in failed"
                         }
                     },

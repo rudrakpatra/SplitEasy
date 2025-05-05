@@ -9,13 +9,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.rounded.Create
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,24 +23,40 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.spliteasy.api.Group
+import com.example.spliteasy.api.Groups
+import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
 fun GroupScreen(
-    group: Group= Group("Family Trip", "Group for our summer vacation", "family-trip-1"),
+    groupId: String="",
+    groupDefault: Group= Group(),
+    groupDescription: String="",
     onBackClick: () -> Unit={},
-    onOverviewClick: () -> Unit={},
+    onAccountsClick: () -> Unit={},
     onTransactionsClick: () -> Unit={},
     onSummaryClick: () -> Unit={},
     onAIQueryClick:()->Unit={},
 ) {
+    val db = FirebaseFirestore.getInstance()
+
+    var group = remember {
+        mutableStateOf(groupDefault)
+    }
+    var isLoading = remember {
+        mutableStateOf(true)
+    }
     val context = LocalContext.current
+    LaunchedEffect(groupId) {
+        group.value = Groups.get(db,groupId) ?: Group()
+        isLoading.value = false
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(group.name) },
+                title = { Text(group.value.name) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -48,11 +64,13 @@ fun GroupScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Invite Link", "SplitEasy:${group.id}")
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Invite Link Copied", Toast.LENGTH_SHORT).show()
+                            onClick = {
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip =
+                                    ClipData.newPlainText("Invite Link", "SplitEasy:${groupId}")
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Invite Link Copied", Toast.LENGTH_SHORT).show()
                         }
                     ) {
                         Icon(Icons.Outlined.Share, contentDescription = "Share Group")
@@ -81,12 +99,11 @@ fun GroupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = group.description,
+                text = group.value.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            CardItem("Overview", onOverviewClick)
+            CardItem("Accounts", onAccountsClick)
             CardItem("Transactions", onTransactionsClick)
             CardItem("Summary", onSummaryClick)
         }

@@ -2,6 +2,8 @@ package com.example.spliteasy.aichat
 
 import android.graphics.Bitmap
 import android.net.Uri
+import android.text.method.LinkMovementMethod
+import android.widget.TextView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -31,11 +33,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,7 +66,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.ext.tasklist.TaskListPlugin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -356,7 +365,7 @@ fun ChatInputBar(
                         )
                     } else {
                         Icon(
-                            Icons.Default.Send,
+                            Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send Message",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -372,6 +381,18 @@ fun ChatMessageItem(message: Message) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
+
+    // Get local context to initialize Markwon
+    val context = LocalContext.current
+
+    // Initialize Markwon
+    val markwon = remember {
+        Markwon.builder(context)
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TaskListPlugin.create(context))
+            .usePlugin(TablePlugin.create(context))
+            .build()
+    }
 
     Column(
         modifier = Modifier
@@ -395,7 +416,7 @@ fun ChatMessageItem(message: Message) {
                 bottomEnd = 16.dp
             ),
             modifier = Modifier.padding(top = 2.dp),
-            colors = androidx.compose.material3.CardDefaults.cardColors(
+            colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
@@ -425,13 +446,31 @@ fun ChatMessageItem(message: Message) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Message text
-                Text(
-                    text = message.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                // Use the proper MarkdownText component
+                MarkdownText(
+                    markdown = message.content,
+                    markwon = markwon
                 )
             }
         }
     }
+}
+
+@Composable
+fun MarkdownText(markdown: String, markwon: Markwon) {
+    val spanned = remember(markdown) {
+        markwon.toMarkdown(markdown)
+    }
+
+    AndroidView(
+        factory = { context ->
+            TextView(context).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+            }
+        },
+        update = { textView ->
+            markwon.setParsedMarkdown(textView, spanned)
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }

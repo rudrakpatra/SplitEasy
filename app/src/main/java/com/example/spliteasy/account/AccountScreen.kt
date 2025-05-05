@@ -1,4 +1,4 @@
-package com.example.spliteasy.member
+package com.example.spliteasy.account
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,35 +8,46 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.spliteasy.api.Account
-import com.example.spliteasy.api.ExampleGroups
-import com.example.spliteasy.api.ExampleMembers
-import com.example.spliteasy.api.Group
-import com.example.spliteasy.api.Member
-import com.example.spliteasy.transaction.TransactionCardItem
-import java.text.SimpleDateFormat
-import java.util.Locale
+//import com.example.spliteasy.transaction.TransactionCardItem
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlin.math.abs
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Preview
-fun MemberScreen(
-    group: Group= ExampleGroups[0],
-    member: Member= ExampleMembers[0],
-    onBackClick: () -> Unit={},
-    onExpenditureClick: () -> Unit={},
+fun AccountScreen(
+    groupId: String = "",
+    accountId: String = "",
+    onBackClick: () -> Unit = {},
+    onExpenditureClick: () -> Unit = {},
 ) {
+    val db = FirebaseFirestore.getInstance()
+    val accountState = remember { mutableStateOf<Account?>(null) }
+    val userState = remember { mutableStateOf<User?>(null) }
+    val isLoading = remember { mutableStateOf(true) }
+
+    LaunchedEffect(accountId) {
+        isLoading.value = true
+        val account = Accounts.get(db, groupId,accountId)
+        accountState.value = account
+        if(account?.user == null) return@LaunchedEffect
+        val user = Accounts.getUser(db,groupId,accountId)
+        userState.value = user!!
+        isLoading.value = false
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Member Details") },
+                title = { Text("Account Details") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -45,93 +56,89 @@ fun MemberScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Member Header
-            item {
-                MemberHeader(member)
-            }
 
-            // Divider
-            item {
-                HorizontalDivider()
+        if (isLoading.value || accountState.value == null || userState.value == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
+        } else {
+            val account = accountState.value!!
+            val user = userState.value!!
 
-            // Balance Summary
-            item {
-                BalanceSummary(member.account)
-            }
-            // Expenditure Summary
-            item {
-                ExpenditureSummary(
-                    member.account,
-                    onClick = onExpenditureClick
-                )
-            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-            // Recent Credits
-            if (member.account.creditList.isNotEmpty()) {
+                item { AccountHeader(user) }
+
+                item { HorizontalDivider() }
+
+                item { BalanceSummary(account) }
+
                 item {
-                    Text(
-                        text = "Recent Credits",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
+                    ExpenditureSummary(
+                        account = account,
+                        onClick = onExpenditureClick
                     )
                 }
 
-                items(member.account.creditList.take(3)) { transaction ->
-                    TransactionCardItem(transaction, onClick = {})
-                }
-            }
-
-            // Recent Debits
-            if (member.account.debitList.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Recent Debits",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                if (account.expenses.isNotEmpty()) {
+                    item {
+                        SectionTitle("Recent Expenses")
+                    }
+                    items(account.expenses.take(3)) { transaction ->
+//                        TransactionCardItem(transaction, onClick = {})
+                    }
                 }
 
-                items(member.account.debitList.take(3)) { transaction ->
-                    TransactionCardItem(transaction, onClick = {})
+                if (account.transfers.isNotEmpty()) {
+                    item {
+                        SectionTitle("Recent Transfers")
+                    }
+                    items(account.transfers.take(3)) { transaction ->
+//                        TransactionCardItem(transaction, onClick = {})
+                    }
                 }
-            }
 
-            // Bottom spacing
-            item {
-                Spacer(modifier = Modifier.height(64.dp))
+                item { Spacer(modifier = Modifier.height(64.dp)) }
             }
         }
     }
 }
 
 @Composable
-fun MemberHeader(member: Member) {
+fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+}
+
+@Composable
+fun AccountHeader(user: User) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Member Name
         Text(
-            text = member.user.name,
+            text = user.name,
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
-
-        // Email
-        val dateFormat = SimpleDateFormat("EEEE, MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
         Row(modifier = Modifier.padding(4.dp)) {
             Text(
-                text = member.user.email,
+                text = user.email,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -139,7 +146,6 @@ fun MemberHeader(member: Member) {
         }
     }
 }
-
 @Composable
 fun BalanceSummary(account:Account) {
     val balance = account.balance
